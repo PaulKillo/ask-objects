@@ -235,7 +235,7 @@ function renderList() {
       + '<div class="item-sub"></div>';
     btn.querySelector('.item-place').textContent = o.place;
     btn.querySelector('.item-dist').textContent = me ? fmtKm(distanceKm(me, o)) : `${fmtKm(o.km)} от Тюмени`;
-    btn.querySelector('.item-sub').textContent = `${o.tract} · ${o.address}`;
+    btn.querySelector('.item-sub').textContent = [houseLine(o), o.tract, o.address].filter(Boolean).join(' · ');
     btn.addEventListener('click', () => openSheet(o.id));
     list.append(btn);
   }
@@ -348,7 +348,31 @@ function locate(centerMap) {
 
 // ---------- Карточка объекта ----------
 
+// «Дом · 62,87 м² · 1 этаж · 2 спальни»
+const plural = (n, one, few, many) => {
+  const m10 = n % 10, m100 = n % 100;
+  return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many;
+};
+function houseLine(o) {
+  const parts = [];
+  if (o.area) parts.push(`${o.area} м²`);
+  if (o.floors) parts.push(`${o.floors} ${plural(o.floors, 'этаж', 'этажа', 'этажей')}`);
+  if (o.bedrooms) parts.push(`${o.bedrooms} ${plural(o.bedrooms, 'спальня', 'спальни', 'спален')}`);
+  if (o.floorsNote) parts.push(o.floorsNote);
+  return parts.length ? `${o.kind || 'Дом'} · ${parts.join(' · ')}` : '';
+}
+const imgUrl = (name) => `${CONFIG.imagesBase || 'img/'}${name}`;
+
 function fillSheet(o) {
+  const facade = $('sheetFacade');
+  facade.hidden = !o.facade;
+  if (o.facade) facade.src = imgUrl(o.facade); else facade.removeAttribute('src');
+  const house = houseLine(o);
+  $('sheetHouse').textContent = house;
+  $('sheetHouse').hidden = !house;
+  const plans = o.plans || [];
+  $('planBtn').hidden = !plans.length;
+  $('planBtn').textContent = plans.length > 1 ? `📐 Планировки (${plans.length} ${plural(plans.length, 'лист', 'листа', 'листов')})` : '📐 Планировка';
   $('sheetPlace').textContent = o.place;
   $('sheetAddress').textContent = o.address;
   $('sheetTract').textContent = o.tract;
@@ -408,8 +432,38 @@ function init() {
   $('locate').addEventListener('click', () => locate(true));
 
   $('sheetBackdrop').addEventListener('click', closeSheet);
-  try { WebApp?.BackButton?.onClick(closeSheet); } catch (_) {}
+  // «Назад» в MAX: сначала закрывает планировку, потом карточку
+  try { WebApp?.BackButton?.onClick(() => { if (!$('viewer').hidden) $('viewer').hidden = true; else closeSheet(); }); } catch (_) {}
   $('copyCad').addEventListener('click', () => copyText($('sheetCad').textContent));
+  $('planBtn').addEventListener('click', () => {
+    const o = objects.find((x) => x.id === selectedId);
+    if (!o?.plans?.length) return;
+    const box = $('viewerImgs');
+    box.replaceChildren(...o.plans.map((name) => {
+      const img = document.createElement('img');
+      img.src = imgUrl(name);
+      img.alt = 'Планировка';
+      // Нажатие увеличивает план в 3 раза в точке нажатия, повторное — возвращает
+      img.addEventListener('click', (e) => {
+        const scroller = $('viewerImgs');
+        const rect = img.getBoundingClientRect();
+        const fx = (e.clientX - rect.left) / rect.width;
+        const fy = (e.clientY - rect.top) / rect.height;
+        const zoomed = img.classList.toggle('zoomed');
+        if (zoomed) {
+          const r = img.getBoundingClientRect();
+          scroller.scrollLeft += r.left + fx * r.width - scroller.clientWidth / 2;
+          scroller.scrollTop += r.top + fy * r.height - scroller.clientHeight / 2;
+        } else {
+          scroller.scrollLeft = 0;
+        }
+      });
+      return img;
+    }));
+    $('viewer').hidden = false;
+  });
+  $('viewerClose').addEventListener('click', () => { $('viewer').hidden = true; });
+
   $('routeBtn').addEventListener('click', () => {
     const o = objects.find((x) => x.id === selectedId);
     if (o) openExternal(routeUrl(o.lat, o.lon));
