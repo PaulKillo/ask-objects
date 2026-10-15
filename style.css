@@ -139,19 +139,6 @@ input:focus, select:focus { border-color: var(--accent); }
   font-size: 24px; line-height: 1; cursor: pointer; box-shadow: var(--shadow);
 }
 
-/* Маркеры */
-.pin {
-  width: 30px; height: 30px; border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  background: var(--accent); border: 2px solid #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
-}
-.pin.selected { background: #ff6a00; }
-.me-dot {
-  width: 16px; height: 16px; border-radius: 50%;
-  background: #12a150; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(18, 161, 80, .25);
-}
-
 /* ---------- Карточка объекта ---------- */
 
 .backdrop { position: fixed; inset: 0; z-index: 1500; background: rgba(0, 0, 0, .25); }
@@ -176,4 +163,6 @@ input:focus, select:focus { border-color: var(--accent); }
   padding: 10px 16px; border-radius: 12px; box-shadow: var(--shadow);
 }
 
-.leaflet-container { font: inherit; }
+.ol-viewport { font: inherit; }
+.ol-zoom { top: 10px; right: 10px; left: auto; }
+.ol-attribution { font-size: 11px; }

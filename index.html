@@ -4,15 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Объекты АСК Групп</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
-        integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
-        crossorigin="anonymous" referrerpolicy="no-referrer">
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.2.1/ol.css"
+        integrity="sha384-Jpg1uvTciFJuHq+90Ly0/2SKRT9yS5OhbIN5FuFoFWji9fc44ok8xxO88CJi8Z5W"
+        crossorigin="anonymous">
+  <link rel="stylesheet" href="style.css?v=2">
   <!-- MAX Bridge: даёт глобальный объект window.WebApp -->
   <script src="https://st.max.ru/js/max-web-app.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
-          integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g=="
-          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- OpenLayers: карта, подложка OpenStreetMap -->
+  <script src="https://cdn.jsdelivr.net/npm/ol@10.2.1/dist/ol.js"
+          integrity="sha384-2biaJbygszOKXKsLbF+auMBrB377U1RJUvQIsPmEOtUSKzkcsTOZSykhqnkmx2QU"
+          crossorigin="anonymous"></script>
   <script src="config.js?v=1"></script>
 </head>
 <body>
@@ -86,6 +87,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=1"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

@@ -8,12 +8,12 @@ const $ = (id) => document.getElementById(id);
 const AGENT_KEY = 'ask_agent';           // общий с ботом закрепления: данные агента подставятся сами
 const REQUESTED_KEY = 'ask_objects_requested';
 const OTHER = '__other__';
-const TYUMEN = [57.153, 65.5343];
+const TYUMEN = [65.5343, 57.153]; // lon, lat
 
 let objects = [];
 let me = null;            // { lat, lon } — положение агента
 let selectedId = null;
-let map, markers = new Map(), meMarker = null;
+let map, objectSource, meFeature = null;
 
 // ---------- Утилиты ----------
 
@@ -241,33 +241,59 @@ function renderList() {
   }
 }
 
+// Метка-«капля» в виде SVG: синяя обычная, оранжевая выбранная
+function pinStyle(color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">`
+    + `<path d="M15 1C7.3 1 1 7.2 1 14.9 1 25.3 15 39 15 39s14-13.7 14-24.1C29 7.2 22.7 1 15 1z" fill="${color}" stroke="#fff" stroke-width="2"/>`
+    + '<circle cx="15" cy="15" r="5" fill="#fff"/></svg>';
+  return new ol.style.Style({
+    image: new ol.style.Icon({ src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, anchor: [0.5, 1] }),
+  });
+}
+const PIN = pinStyle('#2b6af3');
+const PIN_SELECTED = pinStyle('#ff6a00');
+const ME = new ol.style.Style({
+  image: new ol.style.Circle({
+    radius: 8,
+    fill: new ol.style.Fill({ color: '#12a150' }),
+    stroke: new ol.style.Stroke({ color: '#fff', width: 3 }),
+  }),
+});
+
 function renderMarkers() {
   const visible = new Set(filtered().map((o) => o.id));
-  for (const [id, m] of markers) {
-    if (visible.has(id)) m.addTo(map); else m.remove();
-  }
-}
-
-function pinIcon(selected) {
-  return L.divIcon({ className: '', html: `<div class="pin${selected ? ' selected' : ''}"></div>`, iconSize: [30, 30], iconAnchor: [15, 30] });
+  for (const f of objectSource.getFeatures()) f.set('hidden', !visible.has(f.getId()));
 }
 
 function initMap() {
-  map = L.map('map', { zoomControl: false, attributionControl: true }).setView(TYUMEN, 9);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  }).addTo(map);
-  L.control.zoom({ position: 'topright' }).addTo(map);
+  objectSource = new ol.source.Vector({
+    features: objects.map((o) => {
+      const f = new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([o.lon, o.lat])));
+      f.setId(o.id);
+      return f;
+    }),
+  });
 
-  for (const o of objects) {
-    const m = L.marker([o.lat, o.lon], { icon: pinIcon(false), title: o.place });
-    m.on('click', () => openSheet(o.id));
-    markers.set(o.id, m);
-  }
+  const objectLayer = new ol.layer.Vector({
+    source: objectSource,
+    style: (f) => (f.get('hidden') ? null : (f.getId() === selectedId ? PIN_SELECTED : PIN)),
+  });
+  objectLayer.setZIndex(1);
+
+  map = new ol.Map({
+    target: 'map',
+    layers: [new ol.layer.Tile({ source: new ol.source.OSM() }), objectLayer],
+    controls: ol.control.defaults.defaults({ rotate: false, attributionOptions: { collapsible: false } }),
+    view: new ol.View({ center: ol.proj.fromLonLat(TYUMEN), zoom: 9 }),
+  });
+
+  map.on('singleclick', (e) => {
+    const f = map.forEachFeatureAtPixel(e.pixel, (x) => x, { layerFilter: (l) => l === objectLayer, hitTolerance: 6 });
+    if (f) openSheet(f.getId());
+  });
+
   renderMarkers();
-  const bounds = L.latLngBounds(objects.map((o) => [o.lat, o.lon]));
-  if (bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24] });
+  if (objects.length) map.getView().fit(objectSource.getExtent(), { padding: [40, 24, 24, 24], maxZoom: 14 });
 }
 
 function setView(view) {
@@ -275,7 +301,7 @@ function setView(view) {
   $('map').hidden = view !== 'map';
   $('list').hidden = view !== 'list';
   $('locate').hidden = view !== 'map';
-  if (view === 'map') setTimeout(() => map.invalidateSize(), 0);
+  if (view === 'map') setTimeout(() => map.updateSize(), 0);
   else renderList();
 }
 
@@ -286,7 +312,7 @@ function showMain() {
   for (const t of tracts) sel.add(new Option(t, t));
 
   show('screenMain');
-  if (!map) initMap(); else map.invalidateSize();
+  if (!map) initMap(); else map.updateSize();
   renderList();
   locate(false);
 }
@@ -303,10 +329,15 @@ function locate(centerMap) {
   navigator.geolocation.getCurrentPosition((pos) => {
     me = { lat: pos.coords.latitude, lon: pos.coords.longitude };
     note.hidden = true;
-    const icon = L.divIcon({ className: '', html: '<div class="me-dot"></div>', iconSize: [16, 16], iconAnchor: [8, 8] });
-    if (meMarker) meMarker.setLatLng([me.lat, me.lon]);
-    else meMarker = L.marker([me.lat, me.lon], { icon, interactive: false, zIndexOffset: 1000 }).addTo(map);
-    if (centerMap) map.setView([me.lat, me.lon], 11);
+    const point = new ol.geom.Point(ol.proj.fromLonLat([me.lon, me.lat]));
+    if (meFeature) meFeature.setGeometry(point);
+    else {
+      meFeature = new ol.Feature(point);
+      const meLayer = new ol.layer.Vector({ source: new ol.source.Vector({ features: [meFeature] }), style: ME });
+      meLayer.setZIndex(2);
+      map.addLayer(meLayer);
+    }
+    if (centerMap) map.getView().animate({ center: point.getCoordinates(), zoom: 11, duration: 300 });
     renderList();
     if (selectedId != null) fillSheet(objects.find((o) => o.id === selectedId));
   }, () => {
@@ -342,9 +373,8 @@ function fillSheet(o) {
 function openSheet(id) {
   const o = objects.find((x) => x.id === id);
   if (!o) return;
-  if (selectedId != null) markers.get(selectedId)?.setIcon(pinIcon(false));
   selectedId = id;
-  markers.get(id)?.setIcon(pinIcon(true));
+  objectSource.changed();
   fillSheet(o);
   $('sheet').hidden = false;
   $('sheetBackdrop').hidden = false;
@@ -353,8 +383,8 @@ function openSheet(id) {
 }
 
 function closeSheet() {
-  if (selectedId != null) markers.get(selectedId)?.setIcon(pinIcon(false));
   selectedId = null;
+  objectSource?.changed();
   $('sheet').hidden = true;
   $('sheetBackdrop').hidden = true;
   try { WebApp?.BackButton?.hide(); } catch (_) {}
