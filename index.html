@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Объекты АСК Групп</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+        integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="style.css?v=1">
+  <!-- MAX Bridge: даёт глобальный объект window.WebApp -->
+  <script src="https://st.max.ru/js/max-web-app.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+          integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="config.js?v=1"></script>
+</head>
+<body>
+  <!-- Загрузка / ошибка -->
+  <section id="screenStatus" class="screen center">
+    <div class="spinner" id="spinner"></div>
+    <p id="statusText" class="muted">Загружаем объекты…</p>
+    <button type="button" class="btn" id="retry" hidden>Повторить</button>
+  </section>
+
+  <!-- Запрос доступа -->
+  <section id="screenRequest" class="screen pad" hidden>
+    <h1>Карта объектов</h1>
+    <p class="muted">Карта доступна агентам партнёров АСК Групп. Заполните данные — менеджер подтвердит доступ, и бот пришлёт уведомление.</p>
+    <form id="requestForm" class="card" novalidate>
+      <label class="field"><span>ФИО</span><input name="name" autocomplete="name" required></label>
+      <label class="field"><span>Телефон</span><input name="phone" type="tel" inputmode="tel" placeholder="+7 900 000-00-00" required></label>
+      <label class="field"><span>Агентство</span>
+        <select name="agency" required><option value="" disabled selected>Выберите агентство</option></select>
+      </label>
+      <label class="field" id="agencyOtherField" hidden><span>Название агентства</span><input name="agencyOther"></label>
+      <p id="requestError" class="error" hidden></p>
+      <button type="submit" class="btn" id="requestSubmit">Запросить доступ</button>
+    </form>
+  </section>
+
+  <!-- Запрос отправлен -->
+  <section id="screenRequested" class="screen center pad" hidden>
+    <div class="big-icon">⏳</div>
+    <h2>Запрос отправлен</h2>
+    <p class="muted">Менеджер АСК Групп проверит его, и бот пришлёт уведомление. После этого откройте карту снова.</p>
+    <button type="button" class="btn" id="checkAgain">Проверить доступ</button>
+  </section>
+
+  <!-- Основной экран -->
+  <section id="screenMain" class="screen main" hidden>
+    <header class="topbar">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" class="tab active" data-view="map">Карта</button>
+        <button type="button" role="tab" class="tab" data-view="list">Список</button>
+      </div>
+      <div class="filters">
+        <input id="search" type="search" placeholder="Поиск: посёлок, КН">
+        <select id="tractFilter"><option value="">Все тракты</option></select>
+      </div>
+      <p id="geoNote" class="geo-note" hidden></p>
+    </header>
+
+    <div id="map" class="view"></div>
+    <div id="list" class="view list" hidden></div>
+
+    <button type="button" class="locate" id="locate" aria-label="Моё местоположение">◎</button>
+  </section>
+
+  <!-- Карточка объекта -->
+  <div id="sheetBackdrop" class="backdrop" hidden></div>
+  <section id="sheet" class="sheet" hidden aria-live="polite">
+    <div class="grab"></div>
+    <h2 id="sheetPlace"></h2>
+    <p id="sheetAddress" class="address"></p>
+    <dl class="facts">
+      <dt>Тракт</dt><dd id="sheetTract"></dd>
+      <dt>От центра Тюмени</dt><dd id="sheetFromCity"></dd>
+      <dt id="sheetFromMeLabel">От вас</dt><dd id="sheetFromMe"></dd>
+      <dt>Кадастровый номер</dt>
+      <dd><span id="sheetCad"></span> <button type="button" class="link" id="copyCad">Копировать</button></dd>
+    </dl>
+    <button type="button" class="btn" id="routeBtn">🚗 Построить маршрут</button>
+    <div id="extraRoutes"></div>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js?v=1"></script>
+</body>
+</html>
